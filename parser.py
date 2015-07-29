@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from bs4 import BeautifulSoup
 from csv_worker import WorkWithFile
 from datetime import datetime
@@ -5,10 +6,27 @@ import urllib2
 import re
 
 
-url = 'http://www.regiongavleborg.se/A-O/Vardgivarportalen/Lakemedel/Lakemedelskommitten/Organisation/Lakemedelskommittens-ledamoter/'
+url = 'http://www.regiongavleborg.se/A-O/Vardgivarportalen/Lakemedel/Lakemedelskommitten/Organisation/Lakemedelskommittens-terapigrupper/'
 soup = BeautifulSoup(urllib2.urlopen(url).read(), "lxml")
 all_tables = soup.findAll('table', {"class": "linjeradOrange"})
 rows = []
+
+
+def get_correct_role(role):
+    correct_role = 'unspecified'
+    roles = {
+        'Ordförande': 'ordf',
+        'Vice ordförande': 'vice ordf',
+        'Sekreterare': 'sekr',
+        'Informationsläkare': 'inf',
+        'ordförande': 'ordf',
+        'vice ordförande': 'vice ordf',
+        'sekreterare': 'sekr',
+        'informationsläkare': 'inf',
+    }
+    if roles.has_key(role):
+        correct_role = roles[role]
+    return correct_role
 
 
 def split_full_name(full_name):
@@ -38,19 +56,28 @@ def get_date(html):
 def convert_table_rows(tables):
     for table in tables:
         tr_tags = table.find_all("tr")
-        needed_el = 0
+        column_name = False
+        column_role = False
         for tr in tr_tags:
-            if needed_el:
-                full_name = tr.contents[needed_el].contents[0].split()
+            row = {}
+            if column_name:
+                full_name = tr.contents[column_name].contents[0].split()
                 row = split_full_name(full_name)
                 row['doc_updated'] = get_date(soup)
                 row['download_date'] = datetime.now()
+            if column_role:
+                role = tr.contents[column_role].text.encode('utf-8')
+                role = re.sub('\n', '', role)
+                row["role"] = get_correct_role(role)
+            if not column_name and not column_role:
+                for i, el in enumerate(tr.contents):
+                    if hasattr(el, "text") and el.text == "Namn":
+                        column_name = i
+                    if hasattr(el, "text") and el.text == "Funktion":
+                        column_role = i
+            else:
                 rows.append(row)
-                continue
-            for i, el in enumerate(tr.contents):
-                if hasattr(el, "text") and el.text == "Namn":
-                    needed_el = i
-                    continue
+
 
 convert_table_rows(all_tables)
 WorkWithFile().write_rows(rows, url)
