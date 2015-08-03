@@ -6,11 +6,6 @@ import urllib2
 import re
 
 
-url = 'http://www.regiongavleborg.se/A-O/Vardgivarportalen/Lakemedel/Lakemedelskommitten/Organisation/Lakemedelskommittens-terapigrupper/'
-soup = BeautifulSoup(urllib2.urlopen(url).read(), "lxml")
-rows = []
-
-
 def parse_tables(html):
     all_tables = []
     names = html.findAll('th', text=re.compile('Namn'))
@@ -88,6 +83,7 @@ def get_date(html):
 
 
 def convert_table_rows(tables):
+    rows = []
     for table in tables:
         tr_tags = table.find_all("tr")
         column_name = False
@@ -99,7 +95,7 @@ def convert_table_rows(tables):
             if column_name:
                 full_name = tr.contents[column_name].contents[0].split()
                 row = split_full_name(full_name)
-                if len(tr.contents[column_name].contents) >= 3:
+                if len(tr.contents[column_name].contents) > 3:
                     for el in tr.contents[column_name].contents:
                         if hasattr(el, "text") and el.text:
                             row['title'] = get_correct_title(re.sub(',\xc2\xa0', '', el.text.encode('utf-8')))
@@ -143,5 +139,7 @@ def convert_table_rows(tables):
     if rows:
         WorkWithFile().write_rows(rows)
 
-
-parse_tables(soup)
+if __name__ == "__main__":
+    url = 'http://www.regiongavleborg.se/A-O/Vardgivarportalen/Lakemedel/Lakemedelskommitten/Organisation/Lakemedelskommittens-terapigrupper/'
+    soup = BeautifulSoup(urllib2.urlopen(url).read(), "lxml")
+    parse_tables(soup)
