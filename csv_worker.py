@@ -11,7 +11,8 @@ class WorkWithFile():
         if os.path.exists("names.csv"):
             mod = 'a'
         with open('names.csv', mod) as csv_file:
-            fieldnames = ['first_name', 'last_name', 'doc_updated', 'download_date', 'role', 'title', 'url']
+            fieldnames = ['first_name', 'last_name', 'role', 'title', 'workplace', 'doc_updated', 'download_date',
+                          'url']
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
             if mod == "w":
                 writer.writeheader()

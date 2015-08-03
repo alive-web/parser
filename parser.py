@@ -23,7 +23,7 @@ def parse_tables(html):
 
 
 # for string in soup.stripped_strings:
-#     print(repr(string))
+# print(repr(string))
 
 
 def get_correct_role(role):
@@ -93,15 +93,29 @@ def convert_table_rows(tables):
         column_name = False
         column_role = False
         column_title = False
+        column_workplace = False
         for tr in tr_tags:
             row = {}
             if column_name:
                 full_name = tr.contents[column_name].contents[0].split()
                 row = split_full_name(full_name)
+                if len(tr.contents[column_name].contents) >= 3:
+                    for el in tr.contents[column_name].contents:
+                        if hasattr(el, "text") and el.text:
+                            row['title'] = get_correct_title(re.sub(',\xc2\xa0', '', el.text.encode('utf-8')))
+                            break
+                        else:
+                            row['title'] = get_correct_title(re.sub(',\xc2\xa0', '', el.encode('utf-8')))
+                            if row['title']:
+                                break
             if column_role:
                 role = tr.contents[column_role].text.encode('utf-8')
                 role = re.sub('\n', '', role)
                 row["role"] = get_correct_role(role)
+            if column_workplace:
+                workplace = tr.contents[column_workplace].text.encode('utf-8')
+                workplace = re.sub('\n', '', workplace)
+                row["workplace"] = workplace
             if column_title:
                 title = ""
                 title_list = tr.contents[column_title].contents
@@ -110,7 +124,7 @@ def convert_table_rows(tables):
                 if len(title_list) == 3:
                     title = tr.contents[column_title].contents[2].string.encode('utf-8')
                 row['title'] = get_correct_title(title)
-            if not column_name and not column_role and not column_title:
+            if not column_name and not column_role and not column_title and not column_workplace:
                 for i, el in enumerate(tr.contents):
                     if hasattr(el, "text"):
                         if el.text == "Namn":
@@ -119,6 +133,8 @@ def convert_table_rows(tables):
                             column_role = i
                         if el.text == "Titel":
                             column_title = i
+                        if re.search('Arbetsplats', el.text):
+                            column_workplace = i
             else:
                 row['doc_updated'] = get_date(soup)
                 row['download_date'] = datetime.now()
@@ -126,5 +142,6 @@ def convert_table_rows(tables):
                 rows.append(row)
     if rows:
         WorkWithFile().write_rows(rows)
+
 
 parse_tables(soup)
