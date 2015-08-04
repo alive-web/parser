@@ -17,101 +17,92 @@ def parse_tables(html):
         convert_table_rows(all_tables)
 
 
-# for string in soup.stripped_strings:
-# print(repr(string))
-
-
 def get_correct_role(role):
-    correct_role = 'unspecified'
+    role = role.lower()
     roles = {
-        'Ordförande': 'ordf',
-        'Vice ordförande': 'vice ordf',
-        'Sekreterare': 'sekr',
-        'Informationsläkare': 'inf',
         'ordförande': 'ordf',
         'vice ordförande': 'vice ordf',
         'sekreterare': 'sekr',
         'informationsläkare': 'inf',
     }
-    if roles.has_key(role):
-        correct_role = roles[role]
-    return correct_role
+    return roles.get(role, '')
 
 
 def get_correct_title(title):
-    correct_title = ''
+    title = title.lower()
     titles = {
-        'Distriktssköterska': 'district nurse',
-        'Kvalitetssamordnare': 'quality Coordinator',
-        'Medicinskt ansvarig sjuksköterska': 'Head nurse',
-        'Apotekare': 'pharmacist',
-        'Familjeläkare': 'family',
+        'distriktssköterska': 'district nurse',
+        'kvalitetssamordnare': 'quality Coordinator',
+        'medicinskt ansvarig sjuksköterska': 'Head nurse',
+        'apotekare': 'pharmacist',
+        'familjeläkare': 'family',
         'Överläkare': 'physician',
-        'Tandläkare': 'dentist',
-        'MAS': 'MAS',
-        'Sjuksköterska': 'nurse',
-        'Medicinsk rådgivare': 'medical advisor',
-        'Dietist': 'dietitian'
+        'överläkare': 'physician',
+        'tandläkare': 'dentist',
+        'mas': 'MAS',
+        'sjuksköterska': 'nurse',
+        'medicinsk rådgivare': 'medical advisor',
+        'dietist': 'dietitian'
     }
-    if titles.has_key(title):
-        correct_title = titles[title]
-    return correct_title
+    return titles.get(title, '')
 
 
 def split_full_name(full_name):
-    row = {}
+    result = []
     if len(full_name) == 2:
-        row['first_name'] = full_name[0].encode('utf-8')
-        row['last_name'] = full_name[1].encode('utf-8')
+        result.append(full_name[0].encode('utf-8'))
+        result.append(full_name[1].encode('utf-8'))
     if len(full_name) == 1:
-        row['first_name'] = full_name[0].encode('utf-8')
+        result.append(full_name[0].encode('utf-8'))
     if len(full_name) == 3:
-        row['first_name'] = full_name[0].encode('utf-8') + " " + full_name[1].encode('utf-8')
-        row['last_name'] = full_name[2].encode('utf-8')
-    return row
+        result.append((' '.join(full_name[:1])).encode('utf-8'))
+        result.append(full_name[2].encode('utf-8'))
+    return result
 
 
 def get_date(html):
     text_and_date = html.find(text=re.compile('Uppdaterad'))
-    updated = ""
+    updated = ''
     if text_and_date:
-        updated = re.search('(\d{1,4}-\d{1,2}-\d{1,2})', str(text_and_date)) or ""
+        updated = re.search('\d{1,4}-\d{1,2}-\d{1,2}', str(text_and_date)) or ''
         if updated:
             updated = updated.group(0)
-            updated = datetime.strptime(updated, "%Y-%m-%d")
+            updated = datetime.strptime(updated, '%Y-%m-%d')
     return updated
 
 
 def convert_table_rows(tables):
     rows = []
     for table in tables:
-        tr_tags = table.find_all("tr")
+        tr_tags = table.find_all('tr')
         column_name = False
         column_role = False
         column_title = False
         column_workplace = False
         for tr in tr_tags:
-            row = {}
+            person = {}
             if column_name:
                 full_name = tr.contents[column_name].contents[0].split()
-                row = split_full_name(full_name)
+                full_name = split_full_name(full_name)
+                person['first_name'] = full_name[0]
+                person['last_name'] = full_name[1]
                 if len(tr.contents[column_name].contents) > 3:
                     for el in tr.contents[column_name].contents:
                         if hasattr(el, "text") and el.text:
-                            row['title'] = get_correct_title(re.sub(',\xc2\xa0', '', el.text.encode('utf-8')))
+                            person['title'] = get_correct_title(re.sub(',\xc2\xa0', '', el.text.encode('utf-8')))
                             break
                         else:
-                            row['title'] = get_correct_title(re.sub(',\xc2\xa0', '', el.encode('utf-8')))
-                            if row['title']:
+                            person['title'] = get_correct_title(re.sub(',\xc2\xa0', '', el.encode('utf-8')))
+                            if person['title']:
                                 break
             if column_role:
                 role = tr.contents[column_role].text.encode('utf-8')
                 role = re.sub('\n', '', role)
-                row["role"] = get_correct_role(role)
+                person['role'] = get_correct_role(role)
             if column_workplace:
                 workplace = tr.contents[column_workplace].text.encode('utf-8')
                 workplace = re.sub('\n', '', workplace)
-                row["workplace"] = workplace
+                person['workplace'] = workplace
             if column_title:
                 title = ""
                 title_list = tr.contents[column_title].contents
@@ -119,7 +110,7 @@ def convert_table_rows(tables):
                     title = tr.contents[column_title].contents[0].string.encode('utf-8')
                 if len(title_list) == 3:
                     title = tr.contents[column_title].contents[2].string.encode('utf-8')
-                row['title'] = get_correct_title(title)
+                person['title'] = get_correct_title(title)
             if not column_name and not column_role and not column_title and not column_workplace:
                 for i, el in enumerate(tr.contents):
                     if hasattr(el, "text"):
@@ -132,14 +123,14 @@ def convert_table_rows(tables):
                         if re.search('Arbetsplats', el.text):
                             column_workplace = i
             else:
-                row['doc_updated'] = get_date(soup)
-                row['download_date'] = datetime.now()
-                row['url'] = url
-                rows.append(row)
+                person['doc_updated'] = get_date(soup)
+                person['download_date'] = datetime.now()
+                person['url'] = url
+                rows.append(person)
     if rows:
         WorkWithFile().write_rows(rows)
 
 if __name__ == "__main__":
-    url = 'http://www.regiongavleborg.se/A-O/Vardgivarportalen/Lakemedel/Lakemedelskommitten/Organisation/Lakemedelskommittens-terapigrupper/'
+    url = 'http://www.regiongavleborg.se/A-O/Vardgivarportalen/Lakemedel/Lakemedelskommitten/Organisation/Lakemedelskommittens-ledamoter/'
     soup = BeautifulSoup(urllib2.urlopen(url).read(), "lxml")
     parse_tables(soup)
