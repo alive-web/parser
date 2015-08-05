@@ -6,6 +6,22 @@ import urllib2
 import re
 
 
+def delete_punctuation(text):
+    text = re.sub('\n', '', text)
+    text = re.sub(',|\.,\?,!', '', text)
+    return text
+
+
+def test(html):
+    roles = html.findAll(text=re.compile('l.{1}kare|mas|apotekare', re.I))
+    for role in roles:
+        parent = role.find_parent(['tr', 'li'])
+        if parent:
+            text = parent.text
+            text = delete_punctuation(text)
+            print text
+
+
 def parse_tables(html):
     all_tables = []
     names = html.findAll('th', text=re.compile('Namn'))
@@ -133,4 +149,5 @@ def convert_table_rows(tables):
 if __name__ == "__main__":
     url = 'http://www.regiongavleborg.se/A-O/Vardgivarportalen/Lakemedel/Lakemedelskommitten/Organisation/Lakemedelskommittens-ledamoter/'
     soup = BeautifulSoup(urllib2.urlopen(url).read(), "lxml")
-    parse_tables(soup)
+    # parse_tables(soup)
+    test(soup)
