@@ -9,10 +9,12 @@ from find_doctor.items import Person
 class CreateObject():
     def __init__(self, row, date, url):
         self.url = url
-        self.date = datetime.strptime(date, '%Y-%m-%d')
+        self.date = ""
+        if date:
+            self.date = datetime.strptime(date, '%Y-%m-%d')
         self.words = []
         for string in row:
-            string = re.sub('\n|,|\?|!|>|Sammankallande', '', string)
+            string = re.sub('\n|,|\?|!|>|Sammankallande|E-post:', '', string)
             self.words += string.split()
 
     def get_fields(self):
@@ -104,9 +106,11 @@ def get_correct_title(title):
         'dietist': 'dietitian',
         'barnmorska': 'midwife',
         'bakteriolog': 'bacteriological',
+        'chefsläkare': 'head Doctor',
         'chefläkare': 'head doctor',
         'Övertandläkare': 'over dentists',
         'övertandläkare': 'over dentists',
-        'privatläkare': 'private doc'
+        'privatläkare': 'private doc',
+        'distriktsläkare': 'district medical'
     }
     return titles.get(title, '')
